@@ -23,5 +23,4 @@ COPY ./auth_service.py /app/
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python3", "-m", "uvicorn", "auth_service:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "./key.pem", "--ssl-certfile", "./cert.pem"]
-
+CMD ["python", "admin_panel.py"]
