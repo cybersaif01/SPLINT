@@ -1,0 +1,19 @@
+Ignore Python's cache files
+
+pycache/
+*.pyc
+*.pyo
+Ignore virtual environment folders
+
+venv/
+.venv/
+Ignore local database files
+
+*.db
+*.db-journal
+Ignore local log files
+
+*.log
+Ignore environment files (these should be passed in at runtime, not built into the image)
+
+.env

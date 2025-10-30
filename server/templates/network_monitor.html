@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPLINT - Network Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --sidebar-bg: #1f2937; --main-bg: #111827; --card-bg: #1f2937; --text-primary: #d1d5db; --accent-color: #8b5cf6; --accent-hover: #7c3aed; }
+        body { background-color: var(--main-bg); color: var(--text-primary); font-family: 'Inter', sans-serif; }
+        .sidebar { background-color: var(--sidebar-bg); }
+        .card { background-color: var(--card-bg); }
+        .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: background-color 0.2s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background-color: var(--accent-color); }
+        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 0.2s; }
+        .btn-primary { background-color: var(--accent-color); color: white; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .prose-invert strong { color: white; }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="flex h-screen">
+
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 p-6 flex flex-col justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-10">SPLINT</h1>
+            <nav class="space-y-4">
+                <a href="/" class="nav-item"><span>Dashboard</span></a>
+                <a href="/devices" class="nav-item"><span>Devices</span></a>
+                <a href="/users" class="nav-item"><span>Users</span></a>
+                <a href="/manage-users" class="nav-item"><span>Manage Users</span></a>
+                <a href="/compliance" class="nav-item"><span>Compliance</span></a>
+                <a href="/risk" class="nav-item"><span>Risk Summary</span></a>
+                <a href="/firewall" class="nav-item"><span>Firewall</span></a>
+                <a href="/network" class="nav-item active"><span>Network</span></a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Network Traffic Analysis</h2>
+            <button id="analyze-btn" class="btn btn-primary">Analyze with AI</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- AI Analysis Column -->
+            <div class="card p-6 rounded-lg">
+                <h3 class="text-xl font-bold mb-4">AI Anomaly Report</h3>
+                <div id="ai-analysis-content" class="text-gray-300 h-[60vh] overflow-y-auto prose prose-invert">
+                    Click "Analyze with AI" to generate a report.
+                </div>
+            </div>
+            <!-- Live Connections Column -->
+            <div class="card rounded-lg overflow-hidden">
+                 <h3 class="text-xl font-bold p-6">Live Connection Feed</h3>
+                <div class="h-[60vh] overflow-y-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-800 sticky top-0">
+                            <tr>
+                                <th class="p-4">Source IP</th>
+                                <th class="p-4">Destination</th>
+                                <th class="p-4">Protocol</th>
+                            </tr>
+                        </thead>
+                        <tbody id="connections-table-body">
+                            <tr><td colspan="3" class="text-center p-8">Waiting for network data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('admin_token');
+            if (!token) { window.location.href = '/login'; return; }
+
+            const tableBody = document.getElementById('connections-table-body');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const analysisContent = document.getElementById('ai-analysis-content');
+
+            const apiFetch = (endpoint, options = {}) => {
+                const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+                return fetch(endpoint, { ...options, headers }).then(res => {
+                    if (res.status === 401) window.location.href = '/login';
+                    if (!res.ok) throw new Error('API request failed');
+                    return res.json();
+                });
+            };
+
+            const renderConnections = (connections) => {
+                if (connections.length > 0) {
+                    tableBody.innerHTML = connections.map(c => `
+                        <tr class="border-t border-gray-700">
+                            <td class="p-3">${c.source_ip}</td>
+                            <td class="p-3">${c.dest_ip}:${c.dest_port}</td>
+                            <td class="p-3">${c.protocol}</td>
+                        </tr>`).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="3" class="text-center p-8">No network data received yet.</td></tr>';
+                }
+            };
+            
+            const fetchConnections = () => {
+                 apiFetch('/api/network/connections').then(renderConnections);
+            };
+
+            analyzeBtn.addEventListener('click', () => {
+                analysisContent.innerHTML = '<p>Contacting AI analyst... Please wait.</p>';
+                apiFetch('/api/ai/analyze_network')
+                    .then(data => {
+                        if(data.error) {
+                             analysisContent.innerHTML = `<p class="text-red-400">${data.error}</p>`;
+                        } else {
+                             analysisContent.innerHTML = data.analysis.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        }
+                    })
+                    .catch(err => {
+                         analysisContent.innerHTML = `<p class="text-red-400">Failed to get AI analysis: ${err.message}</p>`;
+                    });
+            });
+
+            // Initial load and auto-refresh
+            fetchConnections();
+            setInterval(fetchConnections, 10000); // Refresh connections every 10 seconds
+        });
+    </script>
+</body>
+</html>

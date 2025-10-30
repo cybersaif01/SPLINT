@@ -1,0 +1,10 @@
+Flask==2.3.2
+requests==2.32.0
+PyJWT==2.8.0
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+gunicorn==21.2.0
+colorama==0.4.6
+pyudev==0.23.0
+Flask-SocketIO==5.3.6
+eventlet==0.36.1

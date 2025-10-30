@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPLINT - Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --main-bg: #111827; --card-bg: #1f2937; --text-primary: #d1d5db; --accent-color: #8b5cf6; --accent-hover: #7c3aed; }
+        body { background-color: var(--main-bg); color: var(--text-primary); font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-card { background-color: var(--card-bg); width: 100%; max-width: 400px; }
+        .form-input { background-color: #374151; border: 1px solid #4b5563; }
+        .btn-primary { background-color: var(--accent-color); font-weight: 600; transition: background-color 0.2s; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body>
+    <div class="login-card p-8 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold text-center text-white mb-2">SPLINT</h1>
+        <h2 class="text-md text-center text-gray-400 mb-8">Administrator Login</h2>
+        <form id="login-form">
+            <div class="mb-4">
+                <label for="username" class="block mb-2 text-sm font-medium">Username</label>
+                <input type="text" id="username" name="username" class="form-input w-full p-2.5 rounded-lg focus:ring-purple-500 focus:border-purple-500" value="admin" required>
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block mb-2 text-sm font-medium">Password</label>
+                <input type="password" id="password" name="password" class="form-input w-full p-2.5 rounded-lg focus:ring-purple-500 focus:border-purple-500" required>
+            </div>
+            <button type="submit" class="btn-primary w-full text-white py-2.5 rounded-lg">Sign In</button>
+        </form>
+        <p id="error-message" class="text-red-500 text-center mt-4"></p>
+    </div>
+
+    <script>
+    // --- CRITICAL FIX: Clear any old, invalid tokens when the login page loads ---
+    localStorage.removeItem('admin_token');
+
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = '';
+        
+        try {
+            const formData = new URLSearchParams(new FormData(event.target));
+
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            });
+
+            // --- THIS IS THE CORRECTED LOGIC ---
+
+            // 1. CHECK FOR AN ERROR RESPONSE FIRST
+            if (!response.ok) {
+                let errorMsg = `Error: ${response.status} ${response.statusText}`;
+                try {
+                    // Try to parse the error response as JSON (many APIs send error details)
+                    const errorData = await response.json();
+                    errorMsg = errorData.detail || errorData.message || errorMsg;
+                } catch (e) {
+                    // If the error response wasn't JSON, just use the status text
+                }
+                // Throw the error to be caught by the 'catch' block
+                throw new Error(errorMsg); 
+            }
+
+            // 2. ONLY PARSE JSON IF THE RESPONSE WAS OK
+            const data = await response.json();
+
+            if (data.access_token) {
+                localStorage.setItem('admin_token', data.access_token);
+                window.location.href = '/'; // Redirect to dashboard
+            } else {
+                throw new Error('Login successful, but no token was received.');
+            }
+
+        } catch (error) {
+            // This will now show the REAL error, not "Unexpected end of JSON input"
+            errorMessage.textContent = error.message;
+        }
+    });
+</script>
+</body>
+</html>

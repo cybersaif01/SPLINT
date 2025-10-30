@@ -1,0 +1,18 @@
+{
+  "admin": {
+    "password": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "role": "admin"
+  },
+  "alice": {
+    "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+    "role": "employee"
+  },
+  "john": {
+    "password": "b40597f1448f4934380b62b0f2e0e4aa4f66afee8a4f87529b485295c376941d422",
+    "role": "analyst"
+  },
+  "alex": {
+    "password": "e9580122cd143d96df2290f36b7b2c2b8c2810ed8ec20485c326455ef119c12abd",
+    "role": "employee"
+  }
+}

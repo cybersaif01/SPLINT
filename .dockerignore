@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+
+# Ignore virtual environment folders
+venv/
+.venv/
+
+# Ignore local database files
+*.db
+*.db-journal
+
+# Ignore local data and log files
+*.log
+*.csv
+*.json
+
+# Ignore secrets and IDE settings
+.env
+.idea/
+.vscode/

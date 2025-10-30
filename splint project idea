@@ -1,0 +1,145 @@
+🧠 SPLINT Project: Structure + Learning Roadmap
+
+    📦 Project Name: SPLINT (SPLunk INTelligence)
+    🎯 Goal: Build a lightweight tool that reads system logs, detects threats using regex + MITRE ATT&CK rules, and alerts via CLI or webhook.
+
+📁 Final Project Structure
+
+splint/
+├── main.py             # Entry point — glues everything together
+├── collector.py        # Tails and reads logs (like tail -f)
+├── rules.py            # Contains detection rules w/ regex & MITRE IDs
+├── alerter.py          # Prints or sends alerts (CLI, Discord, Email)
+├── config.json         # Log sources, alert settings, etc.
+├── utils.py            # Helper functions (log parser, timestamp converter)
+├── sample_logs/        # Test log files for dev/testing
+├── README.md           # Project overview, usage guide
+├── requirements.txt    # Python dependencies
+└── docs/               # Optional: Design doc, rule definitions, screenshots
+
+🧭 Learning Roadmap (Phase-by-Phase)
+🔹 Phase 1: Log File Basics
+🔸 What you'll learn:
+
+    Linux logging system (/var/log/auth.log)
+
+    Use of tail, journalctl
+
+    Log structure (date, service, user, IP)
+
+🔸 Python tasks:
+
+    Read and print last N lines of a file (reader.py)
+
+    Use slicing, .readlines(), .strip()
+
+🔹 Phase 2: Log Monitoring Engine
+🔸 What you'll learn:
+
+    Real-time file monitoring (like tail -f)
+
+    Handling new lines as they’re written
+
+🔸 Python tasks:
+
+    Build a tail-like reader (using file pointer or watchdog)
+
+    Detect changes and react immediately
+
+🔹 Phase 3: Detection Engine (rules.py)
+🔸 What you'll learn:
+
+    Regex for pattern matching
+
+    MITRE ATT&CK technique IDs (like T1110)
+
+    Rule structure: name, pattern, severity, action
+
+🔸 Python tasks:
+
+    Define rules as dictionaries
+
+    Match log lines against each rule
+
+    Extract key info (IP, username, timestamp)
+
+🔹 Phase 4: Alerting Engine (alerter.py)
+🔸 What you'll learn:
+
+    CLI notifications with colored output
+
+    Sending webhook to Discord
+
+    (Optional) Sending emails using smtplib
+
+🔸 Python tasks:
+
+    Design send_alert() function
+
+    Alert formatting (MITRE ID, message, timestamp)
+
+    Output to .csv, .json, and console
+
+🔹 Phase 5: Config + CLI Tooling
+🔸 What you'll learn:
+
+    JSON config files
+
+    Command-line arguments (argparse)
+
+    Modular design + code reuse
+
+🔸 Python tasks:
+
+    Parse config file for log path
+
+    Add flags like --level high, --mitre T1110
+
+🔹 Phase 6: Optional Enhancements
+
+    For extra credit or future projects
+
+    📊 Flask dashboard with Chart.js
+
+    📍 GeoIP lookup using MaxMind
+
+    🤖 YARA rule integration for threat behavior
+
+    ⏱️ Scheduling periodic log scans (cron/systemd)
+
+    🕵️ Sigma rule parser
+
+🧰 Tools You’ll Use
+Tool	Purpose
+Python 3.x	Main programming language
+Regex (re)	Pattern matching
+argparse	CLI argument parsing
+watchdog or file I/O	File monitoring
+requests	Send webhooks to Discord
+smtplib (optional)	Send alert emails
+json / csv	Output logs/alerts
+🧑‍🎓 What You'll Learn Practically
+Skill	Real-world Application
+Linux log analysis	SOC / SIEM work
+Regex matching	Threat detection rules
+MITRE ATT&CK	Red/Blue team analysis
+Alerting workflows	SOC & IR engineering
+Python scripting	Security automation
+Modular design	Real-world development
+💡 Naming Conventions
+
+    rules.py → Contains a list of rule dictionaries
+
+    collector.py → Continuously watches files for new log entries
+
+    main.py → Ties everything together, starts your engine
+
+    alerter.py → Sends alert to user (CLI, Discord, file, etc.)
+
+    config.json → Defines log file paths, alert levels, webhook URLs
+
+📌 Save This Guide
+
+You can ask me anytime:
+
+    “Hey Kali GPT, I’m on Phase 3 — help me build the regex rule matcher again.”

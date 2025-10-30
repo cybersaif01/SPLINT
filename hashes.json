@@ -1,0 +1,8 @@
+{
+    "/etc/passwd": "d85b5e8edece3fdd8f2a4af883bf15fb0d0c7e59bb01d5bfd7e5d197c476fbfe",
+    "/etc/shadow": "5b2d5e8445d84d04028eccfc9b76e89d0d4209c9433248f511c47992444f729e",
+    "/etc/ssh/sshd_config": "160f305635ece2300959616ab840adeb028dfc3a986bc14859675aaf55e70bbe",
+    "/root/.bashrc": "8ef308d7c2df2a84858301a8b4d687385a242ed11b9c6e51db5c3bc782864190",
+    "/root/test_watch.txt": null,
+    "/root/home/cybersaif/Documents/summa.txt": null
+}

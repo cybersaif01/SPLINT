@@ -1,0 +1,4 @@
+Timestamp,Alert Name,Severity,File,Old Hash,New Hash
+2025-07-24 10:23:01,File Modified,high,/etc/shadow,PERMISSION_DENIED,49f7f539d8ebab0dda53493798214a3a03be1886da0a816197cd1194a5e6a517
+2025-08-18 10:31:43,File Modified,high,/etc/passwd,3aeda1d099e4341b38bd29717a7b1e661460e2f967cababa835b8cd176946fbc,d85b5e8edece3fdd8f2a4af883bf15fb0d0c7e59bb01d5bfd7e5d197c476fbfe
+2025-08-18 10:31:43,File Modified,high,/etc/shadow,49f7f539d8ebab0dda53493798214a3a03be1886da0a816197cd1194a5e6a517,5b2d5e8445d84d04028eccfc9b76e89d0d4209c9433248f511c47992444f729e

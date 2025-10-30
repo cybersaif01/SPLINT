@@ -1,0 +1,22 @@
+[
+    {
+        "timestamp": "2025-09-02 12:27:40",
+        "type": "usb",
+        "description": "USB device inserted: 03f0:2003"
+    },
+    {
+        "timestamp": "2025-07-25 19:32:38",
+        "type": "usb",
+        "description": "USB device inserted: 0951:1666"
+    },
+    {
+        "timestamp": "2025-07-25 19:32:38",
+        "type": "usb",
+        "description": "USB device inserted: 0408:5365"
+    },
+    {
+        "timestamp": "2025-07-25 19:32:37",
+        "type": "usb",
+        "description": "USB device inserted: 3151:3020"
+    }
+]

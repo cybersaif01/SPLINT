@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPLINT - Firewall Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --sidebar-bg: #1f2937; --main-bg: #111827; --card-bg: #1f2937; --text-primary: #d1d5db; --accent-color: #8b5cf6; }
+        body { background-color: var(--main-bg); color: var(--text-primary); font-family: 'Inter', sans-serif; }
+        .sidebar { background-color: var(--sidebar-bg); }
+        .card { background-color: var(--card-bg); }
+        .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: background-color 0.2s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background-color: var(--accent-color); }
+        .nav-item svg { margin-right: 0.75rem; }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="flex h-screen">
+
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 p-6 flex flex-col justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-10">SPLINT</h1>
+            <nav class="space-y-4">
+                 <a href="/" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/devices" class="nav-item">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span>Devices</span>
+                </a>
+                <a href="/users" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m9 5.197a6 6 0 004.87-3.414M12 15a4 4 0 01-4-4h8a4 4 0 01-4 4z"/></svg>
+                    <span>Users</span>
+                </a>
+                 <a href="/manage-users" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426-1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span>Manage Users</span>
+                </a>
+                <a href="/compliance" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    <span>Compliance</span>
+                </a>
+                 <a href="/risk" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Risk Summary</span>
+                </a>
+                <a href="/firewall" class="nav-item active">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <span>Firewall</span>
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-4 border-b-2 border-purple-500 pb-2">Active Firewall Blocks</h2>
+        <div class="card rounded-lg overflow-hidden">
+            <table class="w-full text-left">
+                <thead class="bg-gray-800">
+                    <tr>
+                        <th class="p-4">Rule ID</th>
+                        <th class="p-4">Blocked IP Address</th>
+                    </tr>
+                </thead>
+                <tbody id="firewall-table-body">
+                    <tr><td colspan="2" class="text-center p-8 text-text-secondary">Loading firewall status...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('admin_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const tableBody = document.getElementById('firewall-table-body');
+
+            fetch('/api/firewall/blocks', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => {
+                if (!response.ok) return response.json().then(err => { throw new Error(err.error || 'Failed to load firewall data.') });
+                return response.json();
+            })
+            .then(blocks => {
+                if (Array.isArray(blocks) && blocks.length > 0) {
+                    tableBody.innerHTML = blocks.map(block => `
+                        <tr class="border-t border-gray-700">
+                            <td class="p-4">${block.id}</td>
+                            <td class="p-4">${block.ip}</td>
+                        </tr>`).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="2" class="text-center p-8 text-text-secondary">No active blocks initiated by SPLINT found.</td></tr>';
+                }
+            })
+            .catch(error => {
+                tableBody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-red-400">${error.message}</td></tr>`;
+            });
+        });
+    </script>
+</body>
+</html>
+

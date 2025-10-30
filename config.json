@@ -1,0 +1,7 @@
+{
+  "server_url": "http://localhost:5000",
+  "log_file": "/var/log/auth.log",
+  "threshold": 5,
+  "window": 60,
+  "db_file": "splint.db"
+}

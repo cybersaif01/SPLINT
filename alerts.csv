@@ -1,0 +1,92 @@
+timestamp,mitre_id,rule_name,severity,user,ip,line
+2025-07-22 23:59:40,T1110,SSH Brute Force,high,user,192.168.0.5,2025-07-22T23:59:34.972100+05:30 localhost sshd-session[16892]: Failed password for invalid user user from 192.168.0.5 port 54176 ssh2
+2025-07-23 00:03:43,T1110,SSH Brute Force,high,user,192.168.0.5,2025-07-23T00:03:43.357199+05:30 localhost sshd-session[47431]: Failed password for invalid user user from 192.168.0.5 port 50848 ssh2
+2025-07-23 00:08:17,T1110,SSH Brute Force,HIGH,user,192.168.0.5,2025-07-23T00:08:17.607203+05:30 localhost sshd-session[100061]: Failed password for invalid user user from 192.168.0.5 port 60350 ssh2
+2025-07-23 00:21:53,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T00:21:53.539652+05:30 localhost sshd-session[134075]: Failed password for cybersaif from 192.168.0.13 port 39660 ssh2
+2025-07-23 00:25:51,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T00:25:51.131857+05:30 localhost sshd-session[136342]: Failed password for cybersaif from 192.168.0.13 port 34100 ssh2
+2025-07-23 00:41:53,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T00:41:53.122702+05:30 localhost sshd-session[144852]: Failed password for cybersaif from 192.168.0.13 port 60290 ssh2
+2025-07-23 01:24:07,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T01:24:07.133586+05:30 localhost sshd-session[861128]: Failed password for cybersaif from 192.168.0.13 port 45848 ssh2
+2025-07-23 18:51:22,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T18:51:22.526054+05:30 localhost sshd-session[23560]: Failed password for cybersaif from 192.168.0.13 port 34186 ssh2
+2025-07-23 19:27:11,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.13,2025-07-23T19:27:10.722612+05:30 localhost sshd-session[42900]: Failed password for cybersaif from 192.168.0.13 port 52448 ssh2
+2025-07-24 10:23:01,T1497,File Modified,HIGH,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 10:26:42,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-24T10:26:42.896085+05:30 localhost sshd-session[14891]: Failed password for cybersaif from 10.150.59.152 port 48558 ssh2
+2025-07-24 10:27:50,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-24T10:27:49.696145+05:30 localhost sshd-session[15512]: Failed password for cybersaif from 10.150.59.152 port 51476 ssh2
+2025-07-24 12:01:37,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 14:09:14,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-24T14:09:14.475905+05:30 localhost sshd-session[10333]: Failed password for cybersaif from 10.150.59.152 port 38504 ssh2
+2025-07-24 14:10:46,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 14:11:00,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 14:11:12,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 14:11:40,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 14:13:31,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 15:16:03,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 15:16:18,T1005,Permission Denied,MEDIUM,SYSTEM,127.0.0.1,/etc/shadow
+2025-07-24 15:17:44,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-24T15:17:44.308927+05:30 localhost sshd-session[26838]: Failed password for cybersaif from 10.150.59.152 port 48384 ssh2
+2025-07-24 15:17:53,T1021,Successful SSH Login,MEDIUM,cybersaif,10.150.59.152,2025-07-24T15:17:53.117415+05:30 localhost sshd-session[26838]: Accepted password for cybersaif from 10.150.59.152 port 48384 ssh2
+2025-07-24 16:32:29,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:32,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:33,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:33,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:34,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:35,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:32:36,T1200,USB Device Inserted,MEDIUM,UNKNOWN,127.0.0.1,usb_monitor
+2025-07-24 16:35:44,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-07-24T16:35:44.150092+05:30 localhost sshd-session[53985]: Failed password for cybersaif from 172.20.10.2 port 42216 ssh2
+2025-07-24 16:45:17,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-24 16:45:18,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-24 16:45:38,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-07-24T16:45:37.809816+05:30 localhost sshd-session[60970]: Failed password for cybersaif from 172.20.10.2 port 33002 ssh2
+2025-07-24 16:46:41,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-24 16:46:42,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-24 16:48:43,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-24 16:48:44,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:05,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:10,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:11,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:12,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:13,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:18,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:19,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:20,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:21,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:22,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:39,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:57:40,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:59:29,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:59:31,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:59:32,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:59:53,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 11:59:54,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:19,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:21,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:22,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:50,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:51,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:52,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:54,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:55,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:56,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:01:57,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:04:20,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:04:21,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:04:22,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 12:13:43,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-25T12:13:43.618176+05:30 localhost sshd-session[35292]: Failed password for cybersaif from 10.150.59.152 port 34870 ssh2
+2025-07-25 12:15:27,T1110,SSH Brute Force,HIGH,cybersaif,10.150.59.152,2025-07-25T12:15:27.789786+05:30 localhost sshd-session[36544]: Failed password for cybersaif from 10.150.59.152 port 57594 ssh2
+2025-07-25 19:29:09,T1110,SSH Brute Force,HIGH,user,192.168.0.10,2025-07-25T19:29:08.889255+05:30 localhost sshd-session[5406]: Failed password for invalid user user from 192.168.0.10 port 56026 ssh2
+2025-07-25 19:32:37,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 19:32:37,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 19:32:38,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-25 19:32:57,T1110,SSH Brute Force,HIGH,user,192.168.0.10,2025-07-25T19:32:57.539230+05:30 localhost sshd-session[8350]: Failed password for invalid user user from 192.168.0.10 port 54414 ssh2
+2025-07-26 16:20:22,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-26 16:20:23,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-26 16:20:25,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-07-26 16:20:51,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.2,2025-07-26T16:20:50.987603+05:30 localhost sshd-session[22838]: Failed password for cybersaif from 192.168.0.2 port 55382 ssh2
+2025-07-26 16:27:16,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.2,2025-07-26T16:27:15.929994+05:30 localhost sshd-session[28733]: Failed password for cybersaif from 192.168.0.2 port 49336 ssh2
+2025-07-26 16:41:24,T1110,SSH Brute Force,HIGH,cybersaif,192.168.0.2,2025-07-26T16:41:24.481973+05:30 localhost sshd-session[39407]: Failed password for cybersaif from 192.168.0.2 port 46072 ssh2
+2025-07-28 10:33:38,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-07-28T10:33:37.729172+05:30 localhost sshd-session[19020]: Failed password for cybersaif from 172.20.10.2 port 36720 ssh2
+2025-08-18 10:31:43,T1497,File Modified,HIGH,SYSTEM,127.0.0.1,/etc/passwd
+2025-08-18 10:31:43,T1497,File Modified,HIGH,SYSTEM,127.0.0.1,/etc/shadow
+2025-09-02 12:26:12,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-09-02T12:26:12.049101+05:30 localhost sshd-session[95782]: Failed password for cybersaif from 172.20.10.2 port 59862 ssh2
+2025-09-02 12:27:23,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-09-02T12:27:23.245770+05:30 localhost sshd-session[95782]: Failed password for cybersaif from 172.20.10.2 port 59862 ssh2
+2025-09-02 12:27:39,T1200,USB Device Inserted,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-09-02 13:45:20,T1200,Offline USB Detection,MEDIUM,SYSTEM,127.0.0.1,usb_monitor
+2025-09-02 13:46:03,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-09-02T13:46:03.049395+05:30 localhost sshd-session[119668]: Failed password for cybersaif from 172.20.10.2 port 47292 ssh2
+2025-09-02 13:47:16,T1110,SSH Brute Force,HIGH,cybersaif,172.20.10.2,2025-09-02T13:47:16.149098+05:30 localhost sshd-session[119668]: Failed password for cybersaif from 172.20.10.2 port 47292 ssh2
+2025-09-02 15:39:04,T1110,SSH Brute Force,HIGH,cybersaif,10.186.127.152,2025-09-02T15:39:04.329276+05:30 localhost sshd-session[177741]: Failed password for cybersaif from 10.186.127.152 port 56810 ssh2

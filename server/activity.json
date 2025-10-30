@@ -1,0 +1,37 @@
+{
+    "systems": {
+        "root@localhost": {
+            "last_seen": "2025-07-28 10:33:39",
+            "events": [
+                {
+                    "type": "alert",
+                    "mitre_id": "T1110",
+                    "name": "SSH Brute Force",
+                    "severity": "high",
+                    "description": "Multiple failed SSH login attempts"
+                },
+                {
+                    "type": "alert",
+                    "mitre_id": "T1110",
+                    "name": "SSH Brute Force",
+                    "severity": "high",
+                    "description": "Multiple failed SSH login attempts"
+                },
+                {
+                    "type": "alert",
+                    "mitre_id": "T1110",
+                    "name": "SSH Brute Force",
+                    "severity": "high",
+                    "description": "Multiple failed SSH login attempts"
+                },
+                {
+                    "type": "alert",
+                    "mitre_id": "T1110",
+                    "name": "SSH Brute Force",
+                    "severity": "high",
+                    "description": "Multiple failed SSH login attempts"
+                }
+            ]
+        }
+    }
+}

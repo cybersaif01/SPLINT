@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPLINT - Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <style>
+    :root {
+      --sidebar-bg: #1f2937;
+      --main-bg: #111827;
+      --card-bg: #1f2937;
+      --text-primary: #d1d5db;
+      --text-secondary: #9ca3af;
+      --accent-color: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --danger-color: #ef4444;
+      --danger-hover: #dc2626;
+    }
+    body { background-color: var(--main-bg); color: var(--text-primary); font-family: 'Inter', sans-serif; }
+    .sidebar { background-color: var(--sidebar-bg); }
+    .card { background-color: var(--card-bg); }
+    .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 0.2s; cursor: pointer; }
+    .btn-primary { background-color: var(--accent-color); color: white; }
+    .btn-primary:hover { background-color: var(--accent-hover); }
+    .btn-danger { background-color: var(--danger-color); color: white; }
+    .btn-danger:hover { background-color: var(--danger-hover); }
+    .btn-xs { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+    .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: background-color 0.2s; cursor: pointer; }
+    .nav-item:hover, .nav-item.active { background-color: var(--accent-color); }
+    .nav-item svg { margin-right: 0.75rem; }
+    .form-input { background-color: #374151; border: 1px solid #4b5563; color: var(--text-primary); }
+  </style>
+</head>
+<body class="flex h-screen">
+
+  <!-- Sidebar -->
+  <aside class="sidebar w-64 p-6 flex flex-col justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-white mb-10">SPLINT</h1>
+      <nav class="space-y-4">
+        <a href="/" class="nav-item active">Dashboard</a>
+        <a href="/devices" class="nav-item">Devices</a>
+        <a href="/users" class="nav-item">Users</a>
+        <a href="/manage-users" class="nav-item">Manage Users</a>
+        <a href="/compliance" class="nav-item">Compliance</a>
+        <a href="/risk" class="nav-item">Risk Summary</a>
+        <a href="/firewall" class="nav-item">Firewall</a>
+      </nav>
+    </div>
+    <button id="logout-btn" class="btn btn-danger w-full">Logout</button>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-8 overflow-y-auto">
+    <header class="flex justify-end items-center mb-8">
+      <button id="download-report-btn" class="btn btn-primary mr-4">Download Report</button>
+      <button id="clear-alerts-btn" class="btn btn-danger">Clear Alerts</button>
+    </header>
+
+    <div id="main-content">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="card p-6 rounded-lg"><h3>Total Alerts</h3><p id="total-alerts" class="text-4xl font-bold">0</p></div>
+        <div class="card p-6 rounded-lg"><h3>High Severity Alerts</h3><p id="high-alerts" class="text-4xl font-bold">0</p></div>
+        <div class="card p-6 rounded-lg"><h3>Systems Online</h3><p id="online-systems" class="text-4xl font-bold">0 / 0</p></div>
+      </div>
+
+      <!-- Alerts Table + Chart -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Live Alerts Table -->
+        <div class="lg:col-span-2">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Live Alert Feed</h2>
+            <div class="flex items-center space-x-4">
+              <input type="text" id="search-filter" placeholder="Search alerts..." class="form-input rounded-lg px-4 py-2 text-sm w-48">
+              <select id="severity-filter" class="form-input rounded-lg px-4 py-2 text-sm">
+                <option value="all">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="info">Info</option>
+              </select>
+            </div>
+          </div>
+          <div class="card rounded-lg overflow-hidden">
+            <table class="w-full text-left">
+              <thead class="bg-gray-800">
+                <tr>
+                  <th class="p-4">Received At</th>
+                  <th class="p-4">System</th>
+                  <th class="p-4">Description</th>
+                  <th class="p-4">Severity</th>
+                  <th class="p-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body">
+                <tr><td colspan="5" class="text-center p-8 text-text-secondary">Loading alerts...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Severity Chart -->
+        <div>
+          <h2 class="text-2xl font-bold mb-4">Alerts by Severity</h2>
+          <div class="card p-6 rounded-lg">
+            <canvas id="severityChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JS Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = localStorage.getItem("admin_token");
+      if (!token) { window.location.href = "/login"; return; }
+
+      const apiFetch = (endpoint, options = {}, isJson = true) => {
+        const headers = { "Authorization": `Bearer ${token}` };
+        if (isJson) headers["Content-Type"] = "application/json";
+        return fetch(endpoint, { ...options, headers }).then(res => {
+          if (res.status === 401) window.location.href = "/login";
+          if (!res.ok) throw new Error("API failed");
+          return isJson ? res.json() : res;
+        });
+      };
+
+      const getSeverityColor = (s) => ({
+        critical: "#7f1d1d",
+        high: "#ef4444",
+        medium: "#f97316",
+        low: "#eab308",
+        info: "#3b82f6"
+      }[s?.toLowerCase()] || "#6b7280");
+
+      const centerTextPlugin = {
+        id: "centerText",
+        afterDraw: (chart) => {
+          if (chart.config.type !== "doughnut") return;
+          const ctx = chart.ctx;
+          const { top, left, width, height } = chart.chartArea;
+          const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+          ctx.save();
+          ctx.font = "bold 2rem Inter, sans-serif";
+          ctx.fillStyle = "#d1d5db";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(total, left + width / 2, top + height / 2 - 10);
+          ctx.font = "1rem Inter, sans-serif";
+          ctx.fillStyle = "#9ca3af";
+          ctx.fillText("Total", left + width / 2, top + height / 2 + 15);
+          ctx.restore();
+        }
+      };
+
+      const socket = io({ path: '/socket.io' });
+      socket.on('connect', () => console.log('Connected to WebSocket'));
+
+      // Handle new alerts
+      socket.on('new_alert', (alert) => {
+        const tbody = document.getElementById("logs-table-body");
+        const row = document.createElement("tr");
+        row.className = "border-t border-gray-700 hover:bg-gray-700";
+
+        let actions = '';
+        if (alert.name === 'USB Device Plugged In') {
+          actions += `<button class="btn btn-danger btn-xs block-usb-btn" data-system="${alert.system}">Block USB</button>`;
+        }
+        if (alert.name.includes('IP') && alert.ip) {
+          actions += `<button class="btn btn-danger btn-xs block-ip-btn" data-ip="${alert.ip}">Block IP</button>`;
+        }
+
+        row.innerHTML = `
+          <td class="p-4">${new Date(alert.received_at).toLocaleString()}</td>
+          <td class="p-4">${alert.system}</td>
+          <td class="p-4">${alert.description}</td>
+          <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-semibold"
+            style="background:${getSeverityColor(alert.severity)};color:white;">${alert.severity}</span></td>
+          <td class="p-4 space-x-2">${actions}</td>
+        `;
+        tbody.prepend(row);
+        updateDashboard();
+      });
+
+      // Delegate action button clicks
+      document.addEventListener("click", async e => {
+        if (e.target.matches(".block-usb-btn")) {
+          const systemId = e.target.dataset.system;
+          const res = await apiFetch("/api/usb/block", { method: "POST", body: JSON.stringify({ system_id: systemId }) });
+          alert(res.message || "USB block attempted");
+        }
+        if (e.target.matches(".block-ip-btn")) {
+          const ip = e.target.dataset.ip;
+          const res = await apiFetch("/api/firewall/block", { method: "POST", body: JSON.stringify({ ip }) });
+          alert(res.message || "IP block attempted");
+        }
+      });
+
+      let severityChart = null;
+      const renderSeverityChart = (data) => {
+        const ctx = document.getElementById("severityChart").getContext("2d");
+        if (severityChart) severityChart.destroy();
+        const severities = ["info", "low", "medium", "high"];
+        const counts = severities.map(s => data[s] || 0);
+        severityChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: severities.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+            datasets: [{
+              data: counts,
+              backgroundColor: severities.map(getSeverityColor),
+              borderColor: "#1f2937",
+              borderWidth: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            cutout: "70%",
+            plugins: {
+              legend: { position: "bottom", labels: { color: "#d1d5db", usePointStyle: true, boxWidth: 8 } }
+            }
+          },
+          plugins: [centerTextPlugin]
+        });
+      };
+
+      const fetchAndRenderLogs = () => {
+        const search = document.getElementById("search-filter").value;
+        const severity = document.getElementById("severity-filter").value;
+        apiFetch(`/api/logs?search=${encodeURIComponent(search)}&severity=${encodeURIComponent(severity)}`)
+          .then(logs => {
+            const tbody = document.getElementById("logs-table-body");
+            tbody.innerHTML = logs.length
+              ? logs.map(l => {
+                let actions = '';
+                if (l.name === 'USB Device Plugged In') actions += `<button class="btn btn-danger btn-xs block-usb-btn" data-system="${l.system}">Block USB</button>`;
+                if (l.name.includes('IP') && l.ip) actions += `<button class="btn btn-danger btn-xs block-ip-btn" data-ip="${l.ip}">Block IP</button>`;
+                return `<tr class="border-t border-gray-700 hover:bg-gray-700">
+                  <td class="p-4">${new Date(l.received_at).toLocaleString()}</td>
+                  <td class="p-4">${l.system}</td>
+                  <td class="p-4">${l.description}</td>
+                  <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-semibold" style="background:${getSeverityColor(l.severity)};color:white;">${l.severity}</span></td>
+                  <td class="p-4 space-x-2">${actions}</td>
+                </tr>`;
+              }).join("")
+              : `<tr><td colspan="5" class="text-center p-8 text-text-secondary">No alerts found.</td></tr>`;
+          })
+          .catch(console.error);
+      };
+
+      const updateDashboard = () => {
+        apiFetch("/api/alerts/summary").then(stats => {
+          document.getElementById("total-alerts").textContent = stats.total_alerts ?? 0;
+          document.getElementById("high-alerts").textContent = stats.high_alerts ?? 0;
+          document.getElementById("online-systems").textContent = `${stats.systems_online ?? 0} / ${stats.systems_total ?? 0}`;
+        });
+
+        apiFetch("/api/alerts_by_severity").then(data => {
+          const severities = {info:0, low:0, medium:0, high:0};
+          data.forEach(item => { severities[item.severity] = item.count; });
+          renderSeverityChart(severities);
+        });
+        fetchAndRenderLogs();
+      };
+
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        localStorage.removeItem("admin_token"); window.location.href = "/login";
+      });
+
+      document.getElementById("clear-alerts-btn").addEventListener("click", () => {
+        if (confirm("Clear all alerts?")) apiFetch("/api/logs/clear", { method: "DELETE" }).then(updateDashboard);
+      });
+
+      document.getElementById("download-report-btn").addEventListener("click", () => {
+        apiFetch("/api/compliance/report/download", {}, false).then(res => {
+          const header = res.headers.get("Content-Disposition");
+          const filename = header ? header.split("filename=")[1].replace(/"/g, "") : "splint_compliance_report.csv";
+          res.blob().then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+          });
+        });
+      });
+
+      document.getElementById("search-filter").addEventListener("input", () => setTimeout(fetchAndRenderLogs, 300));
+      document.getElementById("severity-filter").addEventListener("change", fetchAndRenderLogs);
+
+      updateDashboard();
+      setInterval(updateDashboard, 15000);
+    });
+  </script>
+
+</body>
+</html>

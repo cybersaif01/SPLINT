@@ -1,0 +1,4 @@
+Flask
+pyOpenSSL
+Flask-SocketIO
+eventlet

@@ -1,0 +1,15 @@
+{
+  "systems": {
+    "cybersaif-laptop": {
+      "last_seen": "2025-07-24 17:45:00",
+      "status": "online",
+      "alerts": [
+        {
+          "time": "2025-07-24 17:43:00",
+          "type": "USB Inserted",
+          "severity": "medium"
+        }
+      ]
+    }
+  }
+}
