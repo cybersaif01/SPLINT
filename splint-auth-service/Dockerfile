@@ -7,20 +7,16 @@ WORKDIR /app
 # Install Python and all required libraries using the system's package manager
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    python3-fastapi \
-    python3-uvicorn \
-    python3-jwt \
-    python3-passlib \
-    python3-multipart \
+    python3-pip \
+    && pip install fastapi uvicorn python-jose python-multipart python-dotenv \
     && rm -rf /var/lib/apt/lists/*
 
-# --- CRITICAL FIX: Copy files from within this service's directory ---
-# This is now simple and reliable because users.json is in the same folder.
+# Copy the app files
 COPY ./users.json /app/users.json
 COPY ./auth_service.py /app/
 
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application
-CMD ["python", "admin_panel.py"]
+# Command to run the FastAPI app
+CMD ["uvicorn", "auth_service:app", "--host", "0.0.0.0", "--port", "8000"]
