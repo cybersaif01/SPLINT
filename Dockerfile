@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir gunicorn
 # 🔧 Add this line so the PATH includes where pip installs executables
 ENV PATH="/home/app/.local/bin:${PATH}"
 
+
 # Expose port
 EXPOSE 5000
 
