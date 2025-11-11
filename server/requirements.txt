@@ -1,4 +1,10 @@
-Flask
-pyOpenSSL
-Flask-SocketIO
-eventlet
+# === Core dependencies ===
+requests==2.31.0
+pyjwt==2.8.0
+colorama==0.4.6
+
+# === System and OS utilities ===
+psutil==5.9.8
+
+# === Optional for file and event monitoring ===
+watchdog==3.0.0

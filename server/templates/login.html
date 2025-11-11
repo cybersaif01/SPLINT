@@ -33,57 +33,72 @@
         <p id="error-message" class="text-red-500 text-center mt-4"></p>
     </div>
 
-    <script>
-    // --- CRITICAL FIX: Clear any old, invalid tokens when the login page loads ---
-    localStorage.removeItem('admin_token');
+    <!-- Firebase + Supabase Integration -->
+    <script type="module">
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    document.getElementById('login-form').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const errorMessage = document.getElementById('error-message');
-        errorMessage.textContent = '';
-        
-        try {
-            const formData = new URLSearchParams(new FormData(event.target));
+        // --- SUPABASE IMPORT ---
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-            const response = await fetch('/api/admin/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData
-            });
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAD-9JMMC44iIRK2cQ3mfeliimmMY1Vgcs",
+            authDomain: "splint-authentication.firebaseapp.com",
+            projectId: "splint-authentication",
+            storageBucket: "splint-authentication.firebasestorage.app",
+            messagingSenderId: "499302003515",
+            appId: "1:499302003515:web:12b2a5f299da1658697d1e",
+            measurementId: "G-1EX9E4BLQ7"
+        };
 
-            // --- THIS IS THE CORRECTED LOGIC ---
+        // --- SUPABASE CONFIG ---
+        const supabaseUrl = 'https://pzbjmfylqtkmcxocrjhq.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6YmptZnlscXRrbWN4b2NyamhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5MjUxNjYsImV4cCI6MjA3NzUwMTE2Nn0.566DfNXGPNDItuneFc66ED1yQhHIm6MgIpZ_-0SwDSg'; // Replace this with your anon public key from Supabase Dashboard
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-            // 1. CHECK FOR AN ERROR RESPONSE FIRST
-            if (!response.ok) {
-                let errorMsg = `Error: ${response.status} ${response.statusText}`;
-                try {
-                    // Try to parse the error response as JSON (many APIs send error details)
-                    const errorData = await response.json();
-                    errorMsg = errorData.detail || errorData.message || errorMsg;
-                } catch (e) {
-                    // If the error response wasn't JSON, just use the status text
-                }
-                // Throw the error to be caught by the 'catch' block
-                throw new Error(errorMsg); 
+        // --- INITIALIZE FIREBASE ---
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+
+        // --- CLEAR OLD TOKEN ---
+        localStorage.removeItem('admin_token');
+
+        // --- LOGIN HANDLER ---
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                // Firebase Authentication login
+                const userCredential = await signInWithEmailAndPassword(auth, username, password);
+                const user = userCredential.user;
+                const token = await user.getIdToken();
+
+                // Save token locally
+                localStorage.setItem('admin_token', token);
+
+                // --- OPTIONAL: Record login in Supabase ---
+                const { data, error } = await supabase.from('admin_logins').insert([
+                    { username: username, login_time: new Date().toISOString() }
+                ]);
+
+                if (error) console.error("Supabase log error:", error);
+
+                // Redirect after success
+                window.location.href = '/dashboard.html';
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
             }
-
-            // 2. ONLY PARSE JSON IF THE RESPONSE WAS OK
-            const data = await response.json();
-
-            if (data.access_token) {
-                localStorage.setItem('admin_token', data.access_token);
-                window.location.href = '/'; // Redirect to dashboard
-            } else {
-                throw new Error('Login successful, but no token was received.');
-            }
-
-        } catch (error) {
-            // This will now show the REAL error, not "Unexpected end of JSON input"
-            errorMessage.textContent = error.message;
-        }
-    });
-</script>
+        });
+    </script>
 </body>
 </html>

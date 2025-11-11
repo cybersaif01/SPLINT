@@ -10,7 +10,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 SERVER_REPORT_URL = f"{config.get_config('SERVER_URL')}/api/report"
 
 # Get the system's hostname to uniquely identify this agent
-SYSTEM_ID = os.uname().nodename
+import platform
+SYSTEM_ID = platform.node()
+
 
 def report_activity(payload: dict):
     """

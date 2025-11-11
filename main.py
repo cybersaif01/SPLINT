@@ -1,284 +1,366 @@
-import config
-import getpass
+# main.py
+"""
+SPLINT Agent - production-ready main agent
+Features:
+ - Auto-register / heartbeat to Supabase (agents table)
+ - Start Windows Event Log monitor (collector_windows) and USB monitor (usb_monitor)
+ - Persist last processed Windows event record number to avoid duplicates
+ - Auto-start on Windows (registry Run key)
+ - Resilient threads that auto-restart collectors if they crash
+ - Colorized logging
+"""
+
 import os
-import threading
 import time
-import re
-import shutil
-import requests
-import jwt
-import subprocess
-import platform
 import socket
-from collections import defaultdict
-from datetime import datetime
-from colorama import Fore, Style, init
+import getpass
+import platform
+import threading
+import traceback
+import json
+import sys
+from datetime import datetime, timezone
+from typing import Optional
 
-# ==========================================================
-#                  CORE MODULE IMPORTS
-# ==========================================================
-from activity_reporter import report_activity
-from fim import run_fim
-from usb_monitor import monitor_usb
+# 3rd-party
+try:
+    from supabase import create_client, Client
+except Exception:
+    create_client = None
+    Client = None
 
-# OS-dependent imports
-system_type = platform.system()
-if system_type == "Linux":
-    from collector import tail_file
-    from rules import rules as rules_list
-elif system_type == "Windows":
-    from collector_windows import start_windows_monitor
-    from rules_windows import rules_windows as rules_list
-else:
-    print(f"{Fore.RED}[!] Unsupported OS: {system_type}")
-    exit(1)
+from colorama import Fore, Style, init as colorama_init
 
-# ==========================================================
-init(autoreset=True)
+# local config helper
+import config
 
-# ───────────────────────────────
-# Config
-SECRET_KEY = config.get_config("SECRET_KEY")
-AUTH_URL   = "https://localhost:8000"
-SERVER_URL = config.get_config("SERVER_URL")
-LOG_FILES  = config.get_log_files()
-ALGORITHM  = config.get_config("ALGORITHM")
-ABUSEIPDB_API_KEY = config.get_config("ABUSEIPDB_API_KEY")
-ABUSEIPDB_CONFIDENCE_SCORE = 75
-checked_ips = set()
-blocked_ips = set()
+# Initialize colorama
+colorama_init(autoreset=True)
+
+# ---------------------------
+# Configuration & Globals
+# ---------------------------
+AGENT_VERSION = "1.0.0"
 SYSTEM_ID = platform.node()
+OS_TYPE = platform.system()
+STATE_DIR = os.path.join(os.path.expanduser("~"), ".splint_agent")
+os.makedirs(STATE_DIR, exist_ok=True)
+STATE_FILE = os.path.join(STATE_DIR, "state.json")
 
-# --- Function to report blocked IPs to the server ---
-def report_blocked_ip(ip: str):
-    try:
-        payload = {"system_id": SYSTEM_ID, "blocked_ip": ip}
-        report_url = f"{SERVER_URL}/api/report/block"
-        requests.post(report_url, json=payload, verify=False, timeout=10)
-    except requests.exceptions.RequestException as e:
-        print(f"{Fore.RED}[SOAR] Failed to report blocked IP to server: {e}")
+# Supabase config via config.get_config (reads from .env)
+SUPABASE_URL = config.get_config("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+SUPABASE_KEY = config.get_config("SUPABASE_KEY") or config.get_config("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY")
 
-# --- Register system with server ---
-def register_system(token):
+# Fallback anon (your project anon key) - only used if nothing else provided
+FALLBACK_SUPABASE_URL = "https://pzbjmfylqtkmcxocrjhq.supabase.co"
+FALLBACK_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6YmptZnlscXRrbWN4b2NyamhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5MjUxNjYsImV4cCI6MjA3NzUwMTE2Nn0.566DfNXGPNDItuneFc66ED1yQhHIm6MgIpZ_-0SwDSg"
+
+if not SUPABASE_URL:
+    SUPABASE_URL = FALLBACK_SUPABASE_URL
+if not SUPABASE_KEY:
+    SUPABASE_KEY = FALLBACK_SUPABASE_KEY
+
+supabase: Optional[Client] = None
+if create_client:
     try:
-        system_id = platform.node()
-        ip_address = socket.gethostbyname(socket.gethostname())
-        payload = {
-            "system_id": system_id,
-            "ip": ip_address,
-            "os": system_type,
-            "timestamp": datetime.now().isoformat()
-        }
-        headers = {"Authorization": f"Bearer {token}"}
-        url = f"{SERVER_URL}/api/systems/register"
-        resp = requests.post(url, json=payload, headers=headers, verify=False, timeout=10)
-        if resp.status_code == 200:
-            print(f"{Fore.GREEN}[✓] Registered system {system_id} ({ip_address}) with server")
-        else:
-            print(f"{Fore.RED}[!] Failed to register system: {resp.text}")
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print(f"{Fore.CYAN}[+] Supabase client initialized ({SUPABASE_URL}){Style.RESET_ALL}")
     except Exception as e:
-        print(f"{Fore.RED}[!] Error while registering system: {e}")
+        print(f"{Fore.YELLOW}[!] Supabase init failed: {e}{Style.RESET_ALL}")
+        supabase = None
+else:
+    print(f"{Fore.YELLOW}[!] supabase-py not installed. Supabase features disabled.{Style.RESET_ALL}")
 
-# ───────────────────────────────
-# Alerter & UI
-def send_alert(rule, user="N/A", ip="N/A", line=""):
-    print(f"\n{Fore.RED}🚨 [ALERT] {rule.get('name')} (Severity: {rule.get('severity')})")
-    print(f"{Fore.YELLOW}  ├── User: {user}, IP: {ip}")
-    print(f"{Fore.WHITE}  └── Triggered by: {line.strip()}")
-    event_payload = {
-        "type": "alert", "mitre_id": rule.get("mitre_id", ""), "name": rule.get("name", ""),
-        "severity": rule.get("severity", ""), "description": rule.get("description", ""),
-        "user": user, "ip": ip, "timestamp": datetime.now().isoformat()
-    }
-    report_activity(event_payload)
+# ---------------------------
+# Helpers
+# ---------------------------
+def log(msg: str, color=Fore.GREEN):
+    print(f"{color}[{datetime.now(timezone.utc).isoformat()}] {msg}{Style.RESET_ALL}")
 
-def print_banner():
-    terminal_width = shutil.get_terminal_size((80, 20)).columns
-    banner = f"""
-{Fore.CYAN}{Style.BRIGHT}
-   ███████╗██████╗ ██╗     ██╗███╗   ██╗████████╗
-   ██╔════╝██╔══██╗██║     ██║████╗  ██║╚══██╔══╝
-   ███████║███████║██║     ██║██╔██╗ ██║   ██║
-   ╚════██║██╔═══╝ ██║     ██║██║╚██╗██║   ██║
-   ███████║██║     ███████╗██║██║ ╚████║   ██║
-   ╚══════╝╚═╝     ╚══════╝╚═╝╚═╝  ╚═══╝   ╚═╝
-{Style.RESET_ALL}
-      Security Protection & Log Intelligence Network Tool
-    """.center(terminal_width)
-    print(banner)
-    print(f"{Fore.YELLOW}[+] Welcome to SPLINT Security Monitor\n")
-
-def authenticate():
-    username = input(f"{Fore.CYAN}Enter your username: {Style.RESET_ALL}").strip()
-    password = getpass.getpass(f"{Fore.CYAN}Enter your password: {Style.RESET_ALL}").strip()
+def safe_json_load(path: str, default: dict = None):
+    default = default or {}
     try:
-        response = requests.post(
-            f"{AUTH_URL}/token",
-            data={"username": username, "password": password},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=10,
-            verify=False
-        )
-        if response.status_code != 200:
-            print(f"{Fore.RED}[!] Authentication failed: {response.text}")
-            return None, None
-        token = response.json()["access_token"]
-        decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return token, decoded
-    except requests.exceptions.RequestException as e:
-        print(f"{Fore.RED}[!] Cannot connect to the authentication service. Is it running?")
-        print(f"{Fore.RED}  └── Error: {e}")
-        return None, None
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+def safe_json_save(path: str, data: dict):
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
     except Exception as e:
-        print(f"{Fore.RED}[!] An unexpected error occurred during authentication: {e}")
-        return None, None
+        log(f"Failed to save state: {e}", Fore.YELLOW)
 
-# --- Threat Intelligence & SOAR ---
-def check_ip_reputation(ip: str):
-    if not ABUSEIPDB_API_KEY or ip in checked_ips: return
-    print(f"{Fore.BLUE}[Threat Intel] Checking IP: {ip}")
-    checked_ips.add(ip)
+# ---------------------------
+# Agent System Info
+# ---------------------------
+def get_system_info():
+    hostname = socket.gethostname()
     try:
-        response = requests.get(
-            'https://api.abuseipdb.com/api/v2/check',
-            params={'ipAddress': ip, 'maxAgeInDays': '90'},
-            headers={'Accept': 'application/json', 'Key': ABUSEIPDB_API_KEY}
-        )
-        if response.status_code == 200 and response.json().get('data', {}).get('abuseConfidenceScore', 0) >= ABUSEIPDB_CONFIDENCE_SCORE:
-            send_alert({
-                "name": "Threat Intel Match: Malicious IP",
-                "severity": "high",
-                "mitre_id": "T1105",
-                "description": f"IP {ip} has a high abuse score of {response.json()['data']['abuseConfidenceScore']}."
-            }, ip=ip, line="AbuseIPDB Reputation Check")
-    except Exception: pass
-
-def block_ip_with_firewall(ip: str):
-    if ip in blocked_ips or system_type != "Linux": return
-    print(f"{Fore.MAGENTA}[SOAR] Attempting to block IP {ip} with UFW firewall...")
-    try:
-        status_result = subprocess.run(['sudo', 'ufw', 'status'], capture_output=True, text=True, timeout=5)
-        if "inactive" in status_result.stdout:
-            print(f"{Fore.YELLOW}[SOAR Warning] UFW is inactive. Cannot block IP.")
-            return
-        result = subprocess.run(['sudo', 'ufw', 'deny', 'from', ip, 'to', 'any'], capture_output=True, text=True, check=True, timeout=5)
-        if "Rule added" in result.stdout:
-            blocked_ips.add(ip)
-            print(f"{Fore.GREEN}[SOAR Success] Successfully blocked IP {ip}.")
-            report_blocked_ip(ip)
-            send_alert({
-                "name": "SOAR: IP Blocked by Firewall",
-                "severity": "high",
-                "mitre_id": "T1562.004",
-                "description": f"Automated response: Blocked IP {ip} due to suspicious activity."
-            }, ip=ip, line="UFW firewall rule added")
-        else:
-            print(f"{Fore.RED}[SOAR Failure] Failed to block IP {ip}. UFW output: {result.stdout}")
-    except Exception as e:
-        print(f"{Fore.RED}[SOAR Error] An unexpected error occurred: {e}")
-
-# --- Log Monitoring Logic ---
-def log_monitor_worker(log_file):
-    print(f"{Fore.CYAN}[+] Starting log monitor for: {log_file}{Style.RESET_ALL}")
-    failed_attempts = defaultdict(list)
-    try:
-        if system_type == "Linux":
-            from collector import tail_file
-            log_source = tail_file(log_file)
-        else:
-            from collector_windows import windows_event_monitor
-            log_source = windows_event_monitor()
-
-        for line in log_source:
-            for rule in rules_list:
-                if "fim" in rule.get("type", "") or not isinstance(rule.get("pattern"), re.Pattern): continue
-                match = re.search(rule["pattern"], line)
-                if match:
-                    ip = match.groupdict().get("ip", "N/A")
-                    user = match.groupdict().get("user", "N/A")
-                    send_alert(rule, user=user, ip=ip, line=line)
-                    if ip != "N/A": check_ip_reputation(ip)
-                    if "Failed Login" in rule.get("name", ""):
-                        now = time.time()
-                        failed_attempts[ip].append(now)
-                        failed_attempts[ip] = [ts for ts in failed_attempts[ip] if now - ts <= 60]
-                        if len(failed_attempts[ip]) >= 5:
-                            brute_force_rule = { "name": "Brute Force Threshold Exceeded", "severity": "critical", "description": f"5+ failures in 60s from {ip}"}
-                            send_alert(brute_force_rule, user="N/A", ip=ip, line="Multiple failed logins")
-                            block_ip_with_firewall(ip)
-                            failed_attempts[ip].clear()
-    except Exception as e:
-        print(f"{Fore.RED}[!] Critical error in monitor for {log_file}: {e}")
-
-# --- USB & FIM ---
-def handle_usb_events(username):
-    print(f"{Fore.CYAN}[+] USB hardware monitoring service started.{Style.RESET_ALL}")
-    for event in monitor_usb():
-        device_info = event.get("device", "Unknown Device")
-        event_type = event.get("event", "unknown")
-        rule, line_trigger = {}, ""
-        if event_type == 'connected':
-            rule = {"name": "USB Device Plugged In", "severity": "medium", "mitre_id": "T1200", "description": f"A USB device was connected: {device_info}"}
-            line_trigger = f"USB Connected: {device_info}"
-        elif event_type == 'disconnected':
-            rule = {"name": "USB Device Unplugged", "severity": "low", "mitre_id": "T1200", "description": f"A USB device was disconnected: {device_info}"}
-            line_trigger = f"USB Disconnected: {device_info}"
-        if rule and line_trigger:
-            send_alert(rule, user=username, ip="localhost", line=line_trigger)
-
-def start_all_log_monitors():
-    if not isinstance(LOG_FILES, list) or not LOG_FILES:
-        print(f"{Fore.RED}[!] Config Error: LOG_FILES in your .env file is not a valid list. Please check the format (e.g., /var/log/auth.log,/var/log/syslog).")
-        return
-    for log_file_path in LOG_FILES:
-        thread = threading.Thread(target=log_monitor_worker, args=(log_file_path,), daemon=True)
-        thread.start()
-
-# --- Main Execution ---
-if __name__ == "__main__":
-    print_banner()
-    token, decoded = authenticate()
-    if not token: exit(1)
-
-    # Register system after authentication
-    register_system(token)
-
-    role, username = decoded.get("role"), decoded.get("sub")
-    print(f"{Fore.GREEN}[✓] Authenticated as {username} ({role})")
-
-    if role == "employee":
-        print("[+] Initializing SPLINT Monitoring Agent...")
-        report_activity({
-            "type": "login",
-            "name": "User Logged In",
-            "severity": "info",
-            "description": f"User '{username}' logged in.",
-            "user": username,
-            "role": role
-        })
-        send_alert({
-            "name": "Agent Login",
-            "severity": "info",
-            "description": f"Monitoring agent started for user '{username}'."
-        }, user=username, ip="localhost", line="Agent Initialized")
-        
-        threading.Thread(target=handle_usb_events, args=(username,), daemon=True).start()
-        threading.Thread(target=run_fim, daemon=True).start()
-        
-        if system_type == "Linux":
-            start_all_log_monitors()
-        elif system_type == "Windows":
-            start_windows_monitor()
-        
-        print(f"{Fore.GREEN}[✓] SPLINT monitoring services are running in the background.")
-        print(f"{Fore.YELLOW}[i] Press Ctrl+C to stop the agent.")
+        ip = socket.gethostbyname(hostname)
+    except Exception:
+        ip = None
+        # fallback: iterate interfaces if psutil available
         try:
-            while True: time.sleep(10)
-        except KeyboardInterrupt:
-            print(f"\n{Fore.RED}[!] Stopping SPLINT agent.")
-            exit()
-    elif role in ["admin", "analyst"]:
-        print(f"{Fore.YELLOW}[i] {role.capitalize()} '{username}' authenticated successfully.")
-        print(f"{Fore.YELLOW}  └── Please use the web dashboard at {SERVER_URL} for all administrative tasks.")
+            import psutil
+            for ni, addrs in psutil.net_if_addrs().items():
+                for a in addrs:
+                    if getattr(a, "family", None) == socket.AF_INET and not a.address.startswith("127."):
+                        ip = a.address
+                        break
+                if ip: break
+        except Exception:
+            pass
+
+    return {
+        "hostname": hostname,
+        "username": getpass.getuser(),
+        "os": OS_TYPE,
+        "os_version": platform.version(),
+        "ip_address": ip or "unknown",
+        "agent_version": AGENT_VERSION
+    }
+
+# ---------------------------
+# Supabase helpers
+# ---------------------------
+def upsert_agent_record(supabase_client: Client, info: dict):
+    """
+    Upsert agent registration into 'agents' table.
+    Expects columns: hostname (primary key or unique), username, os, os_version, ip_address, agent_version, last_seen, status
+    """
+    if not supabase_client:
+        log("Supabase client not configured, skipping agent upsert.", Fore.YELLOW)
+        return
+
+    try:
+        payload = {
+            "hostname": info["hostname"],
+            "username": info["username"],
+            "os": info["os"],
+            "os_version": info["os_version"],
+            "ip_address": info["ip_address"],
+            "agent_version": info["agent_version"],
+            "last_seen": datetime.utcnow().isoformat(),
+            "status": "active"
+        }
+        # Try upsert - works if unique constraint on hostname exists
+        supabase_client.table("agents").upsert(payload, on_conflict="hostname").execute()
+        log(f"Agent record upserted for {info['hostname']}", Fore.CYAN)
+    except Exception as e:
+        log(f"Failed to upsert agent record: {e}", Fore.YELLOW)
+
+def agent_heartbeat_loop(supabase_client: Client, info: dict, interval: int = 60):
+    """
+    Periodically update the agents.last_seen field.
+    """
+    while True:
+        try:
+            upsert_agent_record(supabase_client, info)
+        except Exception as e:
+            log(f"Heartbeat error: {e}", Fore.YELLOW)
+        time.sleep(interval)
+
+# ---------------------------
+# Windows autostart helper
+# ---------------------------
+def enable_windows_autostart(app_name: str = "SPLINT Agent"):
+    """
+    Adds a registry Run key to auto-start this script at user login.
+    Only for Windows. Should be used carefully.
+    """
+    if OS_TYPE != "Windows":
+        return False
+    try:
+        import winreg
+        exe = sys.executable  # python exe
+        script = os.path.abspath(__file__)
+        # command to run the script in background: use pythonw to avoid console if available
+        pythonw = exe.replace("python.exe", "pythonw.exe") if exe.lower().endswith("python.exe") else exe
+        cmd = f'"{pythonw}" "{script}"' if os.path.exists(pythonw) else f'"{exe}" "{script}"'
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, cmd)
+        winreg.CloseKey(key)
+        log("Windows autostart (Run key) added.", Fore.CYAN)
+        return True
+    except Exception as e:
+        log(f"Failed to enable autostart: {e}", Fore.YELLOW)
+        return False
+
+# ---------------------------
+# Collector start helpers (resilient threads)
+# ---------------------------
+# We will try to import collectors in a flexible way to support multiple versions the user may have.
+def import_windows_collector():
+    """
+    Tries to import start_windows_monitor or monitor_windows_events from collector_windows.py
+    Returns a callable that starts the monitor (blocking) or None.
+    """
+    try:
+        import collector_windows as cw
+        # Prefer start_windows_monitor if available
+        if hasattr(cw, "start_windows_monitor"):
+            return cw.start_windows_monitor
+        if hasattr(cw, "monitor_windows_events"):
+            # wrap into a function to match expected callable signature (no args)
+            return cw.monitor_windows_events
+    except Exception as e:
+        log(f"collector_windows import failed: {e}", Fore.YELLOW)
+    return None
+
+def import_usb_monitor():
+    """
+    Tries to import monitor_usb from usb_monitor.py
+    Returns a callable that yields events (generator) or a function that runs blocking.
+    """
+    try:
+        import usb_monitor as um
+        if hasattr(um, "monitor_usb"):
+            return um.monitor_usb
+    except Exception as e:
+        log(f"usb_monitor import failed: {e}", Fore.YELLOW)
+    return None
+
+def run_collector_in_thread(target_func, name: str, supabase_client: Optional[Client], sys_info: dict, restart_delay: int = 5):
+    """
+    Runs a blocking collector function in a resilient thread. If it raises, logs and restarts after delay.
+    target_func: callable - either a function that blocks (no args) or accepts (supabase, sys_info)
+    """
+    def worker():
+        while True:
+            try:
+                log(f"Starting collector: {name}", Fore.MAGENTA)
+                # attempt to call with (supabase, sys_info) if accepted, otherwise call without args
+                try:
+                    target_func(supabase_client, sys_info)
+                except TypeError:
+                    # try calling without args
+                    target_func()
+                log(f"Collector {name} exited normally.", Fore.YELLOW)
+                # If it returns, wait and restart
+            except Exception as e:
+                log(f"Collector {name} crashed: {e}\n{traceback.format_exc()}", Fore.RED)
+            time.sleep(restart_delay)
+    t = threading.Thread(target=worker, name=f"collector-{name}", daemon=True)
+    t.start()
+    return t
+
+# ---------------------------
+# Windows event record persistence (to avoid duplicates)
+# ---------------------------
+def load_state():
+    return safe_json_load(STATE_FILE, {"last_record_number": 0})
+
+def save_state(state: dict):
+    safe_json_save(STATE_FILE, state)
+
+# ---------------------------
+# Main agent orchestration
+# ---------------------------
+def main_agent():
+    log("Starting SPLINT Agent...", Fore.CYAN)
+    sys_info = get_system_info()
+    log(f"System info: {sys_info}", Fore.WHITE)
+
+    # Upsert/register agent immediately
+    upsert_agent_record(supabase, sys_info)
+
+    # Enable startup (only once)
+    try:
+        enabled = config.get_config("ENABLE_AUTOSTART", "true").lower() in ("1", "true", "yes")
+    except Exception:
+        enabled = True
+    if enabled and OS_TYPE == "Windows":
+        try:
+            enable_windows_autostart()
+        except Exception:
+            pass
+
+    # Start heartbeat thread to update last_seen
+    if supabase:
+        hb_thread = threading.Thread(target=agent_heartbeat_loop, args=(supabase, sys_info, int(config.get_config("HEARTBEAT_INTERVAL", 60))), daemon=True)
+        hb_thread.start()
     else:
-        print(f"{Fore.RED}[!] Unknown role: {role}")
+        log("Supabase not configured; heartbeat disabled.", Fore.YELLOW)
+
+    # Load last state
+    state = load_state()
+    last_record_number = state.get("last_record_number", 0)
+    log(f"Last processed Windows event record: {last_record_number}", Fore.WHITE)
+
+    # Import collectors dynamically
+    windows_collector = import_windows_collector()
+    usb_collector = import_usb_monitor()
+
+    # If we have a windows collector, run it in its own resilient thread
+    if windows_collector:
+        # Many collector implementations expect no args; some accept (supabase, sys_info)
+        run_collector_in_thread(windows_collector, "windows_event", supabase, sys_info)
+    else:
+        log("No Windows event collector available. Skipping.", Fore.YELLOW)
+
+    # If we have a usb collector, run it in a thread. usb monitor may be generator or blocking function.
+    if usb_collector:
+        # Wrap USB monitor to accept (supabase, sys_info) signature if necessary
+        def usb_wrapper(supabase_client, sys_info):
+            # If usb_monitor.monitor_usb is a generator that yields events:
+            try:
+                gen = usb_collector(supabase_client, sys_info)
+            except TypeError:
+                # older signature: monitor_usb() with internal supabase usage
+                gen = usb_collector()
+            # If the returned object is a generator, iterate it
+            if gen is None:
+                # maybe the monitor is blocking and handled internally
+                return
+            try:
+                for event in gen:
+                    # If event is a dict like {'event':'connected','device':name}
+                    if isinstance(event, dict):
+                        # insert into logs table (supabase)
+                        try:
+                            if supabase_client := supabase:
+                                # build record
+                                record = {
+                                    "hostname": sys_info["hostname"],
+                                    "event_id": 9999,
+                                    "source": "USB Monitor",
+                                    "message": f"USB {event.get('event')} - {event.get('device')}",
+                                    "username": sys_info.get("username", "SYSTEM"),
+                                    "timestamp": datetime.utcnow().isoformat()
+                                }
+                                supabase_client.table("logs").insert(record).execute()
+                                log(f"Inserted USB event into logs: {record['message']}", Fore.CYAN)
+                        except Exception as e:
+                            log(f"Failed to insert USB event to Supabase: {e}", Fore.YELLOW)
+                    else:
+                        # if monitor yields plain strings, just log
+                        log(f"USB monitor event: {event}", Fore.CYAN)
+            except Exception as e:
+                log(f"USB monitor wrapper error: {e}\n{traceback.format_exc()}", Fore.RED)
+
+        run_collector_in_thread(usb_wrapper, "usb_monitor", supabase, sys_info)
+    else:
+        log("No USB monitor available. Skipping.", Fore.YELLOW)
+
+    # Keep main thread alive; child threads run daemonized
+    try:
+        while True:
+            time.sleep(10)
+            # periodically save state if modified (the collector should update state itself if needed)
+            # For now we persist nothing here; individual collectors may call save_state as needed.
+    except KeyboardInterrupt:
+        log("SPLINT Agent shutting down (KeyboardInterrupt).", Fore.YELLOW)
+        # update status to inactive
+        try:
+            if supabase:
+                supabase.table("agents").update({"status": "inactive", "last_seen": datetime.utcnow().isoformat()}).eq("hostname", sys_info["hostname"]).execute()
+        except Exception:
+            pass
+
+# ---------------------------
+# Entry point
+# ---------------------------
+if __name__ == "__main__":
+    main_agent()

@@ -1,104 +1,106 @@
+import os
 import time
-import threading
+import json
+import re
 import win32evtlog
 import win32evtlogutil
-import win32con
-import re
-import requests
-from rules_windows import rules_windows
-from datetime import datetime, timezone
+from colorama import Fore, Style, init
+from supabase import create_client, Client
+from dotenv import load_dotenv
+from datetime import datetime
+from config import get_config
 
-# URL of your admin panel API
-API_URL = "https://localhost:5000/api/report"
-SYSTEM_ID = "WINDOWS_HOST_01"
+# Initialize colorama
+init(autoreset=True)
 
-# =====================================================================
-def report_activity(payload):
-    """
-    Send the alert to the admin panel API.
-    """
+# Load environment variables
+load_dotenv()
+
+# === Supabase Setup ===
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print(Fore.RED + "[x] Supabase credentials not found. Check your .env file!")
+    exit(1)
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# === Insert Log into Supabase ===
+def insert_log(event_id, source, message, username=None):
+    data = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "event_id": event_id,
+        "source": source,
+        "message": message,
+        "username": username or "SYSTEM"
+    }
     try:
-        requests.post(API_URL, json=payload, verify=False)
+        res = supabase.table("logs").insert(data).execute()
+        if res.data:
+            print(Fore.GREEN + f"[+] Log inserted successfully: Event ID {event_id}")
+        else:
+            print(Fore.RED + f"[x] Failed to insert log: {res}")
     except Exception as e:
-        print(f"[Reporter] Failed to send alert: {e}")
+        print(Fore.RED + f"[x] Supabase insert failed: {e}")
 
-# =====================================================================
-def check_event_against_rules(event_msg):
-    """
-    Matches a Windows Event Log message against rules_windows and reports alerts.
-    """
-    for rule in rules_windows:
-        pattern = rule.get("pattern")
-        if pattern and re.search(pattern, event_msg):
-            alert_payload = {
-                "type": "alert",
-                "mitre_id": rule.get("mitre_id", ""),
-                "name": rule.get("name"),
-                "severity": rule.get("severity"),
-                "description": rule.get("description"),
-                "user": "N/A",
-                "ip": "localhost",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "system": SYSTEM_ID
-            }
-            print(f"[ALERT] {rule.get('name')} - Severity: {rule.get('severity')}")
-            report_activity(alert_payload)
-
-# =====================================================================
-def windows_event_monitor(log_type="Security"):
-    """
-    Streams Windows Event Logs in real-time and checks them against rules_windows.
-    """
+# === Windows Event Log Monitor ===
+def monitor_windows_events():
+    print(Fore.CYAN + "[Windows Monitor] Monitoring started successfully.")
     server = "localhost"
-    flags = win32evtlog.EVENTLOG_FORWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+    logtype = "Security"
 
     try:
-        hand = win32evtlog.OpenEventLog(server, log_type)
+        hand = win32evtlog.OpenEventLog(server, logtype)
         total = win32evtlog.GetNumberOfEventLogRecords(hand)
-        print(f"[Windows Monitor] Streaming {log_type} logs... Total records: {total}")
+        print(Fore.CYAN + f"[Windows Monitor] Streaming '{logtype}' logs... Total: {total}")
 
-        seen_record_ids = set()
+        # Keep track of last record to avoid duplicates
+        last_record_number = total
+
         while True:
-            events = win32evtlog.ReadEventLog(hand, flags, 0)
+            flags = win32evtlog.EVENTLOG_FORWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+            events = win32evtlog.ReadEventLog(hand, flags, last_record_number)
+
             if events:
                 for event in events:
-                    if event.RecordNumber in seen_record_ids:
+                    # Only process new logs
+                    if event.RecordNumber <= last_record_number:
                         continue
-                    seen_record_ids.add(event.RecordNumber)
-                    event_msg = win32evtlogutil.SafeFormatMessage(event, log_type)
-                    check_event_against_rules(event_msg)
-            time.sleep(1)
+
+                    last_record_number = event.RecordNumber
+
+                    try:
+                        event_msg = win32evtlogutil.SafeFormatMessage(event, logtype)
+                    except Exception:
+                        event_msg = str(event.StringInserts) or "No message"
+
+                    source = event.SourceName
+                    event_id = event.EventID
+                    message = event_msg.strip()
+                    username = None
+
+                    # Extract username if present
+                    user_match = re.search(r"Account Name:\s+([^\s]+)", message)
+                    if user_match:
+                        username = user_match.group(1)
+
+                    # Show colorful output
+                    print(Fore.YELLOW + "\n[ALERT] Windows Event Detected")
+                    print(Fore.MAGENTA + f"├── Event ID: {event_id}")
+                    print(Fore.CYAN + f"├── Source: {source}")
+                    print(Fore.WHITE + f"└── User: {username or 'SYSTEM'}")
+
+                    insert_log(event_id, source, message, username)
+
+            time.sleep(3)  # Poll interval (seconds)
+
+    except KeyboardInterrupt:
+        print(Fore.RED + "\n[!] Windows event monitor stopped by user.")
     except Exception as e:
-        print(f"[Windows Monitor] Error: {e}")
-
-def tail_event_logs():
-    import win32evtlog
-
-    server = 'localhost'  # Always localhost because logs are centralized
-    log_type = 'ForwardedEvents'
-
-    hand = win32evtlog.OpenEventLog(server, log_type)
-
-    flags = win32evtlog.EVENTLOG_FORWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
-    while True:
-        events = win32evtlog.ReadEventLog(hand, flags, 0)
-        if events:
-            for event in events:
-                yield {
-                    "system": event.ComputerName,
-                    "event_id": event.EventID,
-                    "source": event.SourceName,
-                    "time": event.TimeGenerated.isoformat(),
-                    "message": str(event.StringInserts)
-                }
+        print(Fore.RED + f"[!] Windows event monitor stopped: {e}")
 
 
-# =====================================================================
+# === Main Entry ===
 def start_windows_monitor():
-    monitor_thread = threading.Thread(target=windows_event_monitor, daemon=True)
-    monitor_thread.start()
-    print("[Windows Monitor] Monitoring started.")
-
-if __name__ == "__main__":
-    start_windows_monitor()
-    while True: time.sleep(1)
+    monitor_windows_events()
